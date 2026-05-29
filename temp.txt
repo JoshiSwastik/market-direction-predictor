@@ -1,0 +1,154 @@
+import numpy as np
+
+class LogisticRegressionFromScratch:
+    def __init__(self, learning_rate=0.01, iterations=1000):
+        """
+        Initialize the hyperparameters.
+        learning_rate (alpha): controls the step size during gradient descent.
+        iterations: the number of times we pass the training data through the model.
+        """
+        self.lr = learning_rate
+        self.iterations = iterations
+        self.weights = None
+        self.bias = None
+        self.cost_history = []  # To track optimization over time
+
+    def _sigmoid(self, z):
+        """
+        The mathematical activation function mapping inputs to range (0, 1).
+        Using np.exp calculates the exponential element-wise for array inputs.
+        """
+        return 1 / (1 + np.exp(-z))
+
+    def fit(self, X, y):
+        """
+        Train the model using batch gradient descent.
+        X: Feature matrix of shape (m_samples, n_features)
+        y: True target array of shape (m_samples,)
+        """
+        n_samples, n_features = X.shape
+        
+        # 1. Parameter Initialization (Zero-initialization)
+        self.weights = np.zeros(n_features)
+        self.bias = 0.0
+
+        # 2. Optimization Loop (Gradient Descent)
+        for i in range(self.iterations):
+            # Compute the linear combination: z = wX + b
+            linear_model = np.dot(X, self.weights) + self.bias
+            
+            # Apply activation function to get predictions (probabilities)
+            y_predicted = self._sigmoid(linear_model)
+
+            # Calculate Binary Cross-Entropy Cost to monitor performance
+            # Adding a tiny epsilon (1e-15) prevents log(0) calculation errors
+            epsilon = 1e-15
+            y_predicted = np.clip(y_predicted, epsilon, 1 - epsilon)
+            cost = (-1 / n_samples) * np.sum(y * np.log(y_predicted) + (1 - y) * np.log(1 - y_predicted))
+            
+            # Track the cost every 100 iterations
+            if i % 100 == 0:
+                self.cost_history.append((i, cost))
+
+            # 3. Gradient Calculation (Vectorized Derivatives)
+            dw = (1 / n_samples) * np.dot(X.T, (y_predicted - y))
+            db = (1 / n_samples) * np.sum(y_predicted - y)
+
+            # 4. Parameter Update (Stepping down the gradient)
+            self.weights -= self.lr * dw
+            self.bias -= self.lr * db
+            
+        print(f"Training Complete. Final Cost: {cost:.4f}")
+
+    def predict_proba(self, X):
+        """Returns the raw probabilities (floating points between 0 and 1)."""
+        linear_model = np.dot(X, self.weights) + self.bias
+        return self._sigmoid(linear_model)
+
+    def predict(self, X):
+        """Converts raw probabilities to deterministic class labels (0 or 1)."""
+        probabilities = self.predict_proba(X)
+        # Using a 0.5 threshold for standard binary classification
+        return np.array([1 if p >= 0.5 else 0 for p in probabilities])
+
+
+# A dummy synthetic dataset to run a quick test
+np.random.seed(42)
+X_dummy = np.random.randn(100, 3)  # 100 samples, 3 features
+y_dummy = np.random.randint(0, 2, 100)  # 100 binary targets
+
+# Instantiate and fit your custom algorithm
+scratch_model = LogisticRegressionFromScratch(learning_rate=0.1, iterations=500)
+scratch_model.fit(X_dummy, y_dummy)
+
+# Print a quick prediction test
+predictions = scratch_model.predict(X_dummy[:5])
+print("First 5 Sample Predictions:", predictions)
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+
+# 1. Generate Simulated Market Data using NumPy & Pandas
+np.random.seed(101)
+num_days = 500
+
+close_prices = np.random.normal(150, 10, num_days).cumsum()
+volumes = np.random.randint(5000, 25000, num_days)
+
+market_df = pd.DataFrame({
+    'Close': close_prices,
+    'Volume': volumes
+})
+
+# 2. Feature Engineering (Calculate raw EMAs FIRST, then create the relative spread)
+market_df['9_EMA'] = market_df['Close'].ewm(span=9, adjust=False).mean()
+market_df['20_EMA'] = market_df['Close'].ewm(span=20, adjust=False).mean()
+
+# This is our clean, stationary feature
+market_df['EMA_Crossover'] = market_df['9_EMA'] - market_df['20_EMA']
+market_df['Volume_Pct_Change'] = market_df['Volume'].pct_change()
+
+# Create target variable based on next-day price movement
+market_df['Target'] = np.where(market_df['Close'].shift(-1) > market_df['Close'], 1, 0)
+
+# Drop rows with NaN values resulting from shifts/percentage calculations
+market_df.dropna(inplace=True)
+
+# 3. Separate Features (X) and Labels (y) using our 2 robust features
+X = market_df[['EMA_Crossover', 'Volume_Pct_Change']].values
+y = market_df['Target'].values
+
+# Split data into 80% Training and 20% Testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 4. Feature Scaling (Crucial for Gradient Descent convergence)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 5. Train and Evaluate the Model Written From Scratch
+print("--- Training Custom Model From Scratch ---\n")
+custom_model = LogisticRegressionFromScratch(learning_rate=0.1, iterations=2000)
+custom_model.fit(X_train_scaled, y_train)
+custom_preds = custom_model.predict(X_test_scaled)
+custom_accuracy = accuracy_score(y_test, custom_preds)
+
+# 6. Train and Evaluate the Production-Ready Scikit-Learn Model
+print("\n--- Training Production Scikit-Learn Model ---")
+# The standard, clean way to disable penalties in modern Scikit-Learn
+sklearn_model = LogisticRegression(penalty=None, max_iter=2000)
+sklearn_model.fit(X_train_scaled, y_train)
+sklearn_preds = sklearn_model.predict(X_test_scaled)
+sklearn_accuracy = accuracy_score(y_test, sklearn_preds)
+
+# 7. Final Results Comparison
+print("\n==================================")
+print(f"Custom Model Accuracy   : {custom_accuracy * 100:.2f}%")
+print(f"Scikit-Learn Accuracy  : {sklearn_accuracy * 100:.2f}%")
+print("==================================")
+
+
