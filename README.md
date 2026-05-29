@@ -1,4 +1,4 @@
-# 📈 Market Direction Predictor
+# Market Direction Predictor
 
 > A fully containerized Machine Learning web application that predicts short-term market direction using a **custom Logistic Regression engine** built from scratch with NumPy — no sklearn black-box for the core model.
 
