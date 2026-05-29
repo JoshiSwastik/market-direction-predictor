@@ -121,7 +121,7 @@ Trained on 1,000 days of regime-switching synthetic data with ~52% UP / 48% DOWN
 
 ---
 
-## 📌 Key Engineering Decisions
+## Key Engineering Decisions
 
 **Why implement Logistic Regression from scratch?**
 To demonstrate working knowledge of the underlying mathematics — sigmoid activation, binary cross-entropy loss, and vectorized gradient descent — rather than treating ML as a black box.
@@ -139,14 +139,8 @@ Separating build and runtime stages keeps the final image lean. `RUN python trai
 
 ## 👤 Author
 
-**Swastik Joshi** — Infrastructure & Network Engineer | Quantitative ML Projects
+**Swastik Joshi** — Infrastructure & Network Engineer | Cloud computing and Machine learning enthusiast 
 - GitHub: [@JoshiSwastik](https://github.com/JoshiSwastik)
-
----
-
-## 📄 License
-
-MIT License — free to fork, extend, and deploy.
 
 ---
 
